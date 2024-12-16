@@ -3,11 +3,13 @@ const iconv = require('iconv-lite')
 
 module.exports = getPage
 
-function getPage({ url, format, requestMethod, charset }) {
+function getPage({ url, format, requestMethod, charset, baseURL }) {
   if (format === 'info' || requestMethod === 'HEAD') {
     return getPageInfo(url)
   } else if (format === 'raw') {
     return getRawPage(url, requestMethod, charset)
+  } else if (format === 'url') {
+    return getURLPage(url, requestMethod, charset, baseURL)
   }
 
   return getPageContents(url, requestMethod, charset)
@@ -23,6 +25,32 @@ async function getPageInfo(url) {
     content_length: +response.headers['content-length'] || -1,
     http_code: response.statusCode,
   }
+}
+
+async function getURLPage(url, requestMethod, charset, baseURL) {
+  const response = await getRawPage(url, requestMethod, charset)
+  console.log(response.contentType)
+  if (response.contentType)
+    if (!response.contentType.startsWith('text/html')) return response
+
+  try {
+    response.content = Buffer.from(
+      response.content.toString()
+        .replaceAll(/((?:href|src)=["']?)((?:https?:\/\/|\/)?)/gi, function (_, p1, p2) {
+          switch (p2) {
+            case '':
+              p2 = url + '/'
+              break
+            case '/':
+              p2 = new URL(url).origin + '/'
+              break
+          }
+          return `${p1}${baseURL}/url/${p2}`
+      })
+    )
+  } catch (e) { console.error('Couldn\'t parse', url) }
+
+  return response
 }
 
 async function getRawPage(url, requestMethod, charset) {

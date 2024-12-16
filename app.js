@@ -11,6 +11,7 @@ const { version } = require('./package.json')
 global.AO_VERSION = version
 
 const processRequest = require('./app/process-request')
+const processURLRequest = require('./app/process-url-request')
 
 function enableCORS(req, res, next) {
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*')
@@ -37,6 +38,7 @@ module.exports = (function app() {
   app.use(enableCORS)
 
   app.all('/:format(get|raw|json|info)', processRequest)
+  app.all('/url/*', processURLRequest)
 
   return app
 })()
